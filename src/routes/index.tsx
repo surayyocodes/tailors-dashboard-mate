@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Order, Payment, loadOrders, paidAmount, paymentStatus, remainingAmount, saveOrders, formatSom } from "@/lib/orders";
 import { OrderCard } from "@/components/OrderCard";
 import { NewOrderDialog } from "@/components/NewOrderDialog";
+import { NotificationBell } from "@/components/NotificationBell";
 import { Toaster } from "@/components/ui/sonner";
 import { Scissors, Package, Loader, CheckCircle2, AlertTriangle, Wallet } from "lucide-react";
 import { toast } from "sonner";
@@ -119,7 +120,10 @@ function Index() {
               <p className="text-xs text-muted-foreground">Buyurtmalar boshqaruvi</p>
             </div>
           </div>
-          <NewOrderDialog onCreate={createOrder} />
+          <div className="flex items-center gap-2">
+            <NotificationBell orders={orders} />
+            <NewOrderDialog onCreate={createOrder} />
+          </div>
         </div>
       </header>
 
