@@ -1,4 +1,14 @@
 export type OrderStatus = "pending" | "in_progress" | "completed";
+export type PaymentStatus = "unpaid" | "partial" | "paid";
+export type PaymentMethod = "cash" | "click" | "payme" | "uzcard" | "humo" | "transfer" | "other";
+
+export interface Payment {
+  id: string;
+  amount: number;
+  method: PaymentMethod;
+  date: string; // ISO
+  note?: string;
+}
 
 export interface Order {
   id: string;
@@ -11,6 +21,7 @@ export interface Order {
   completedDate?: string; // ISO
   status: OrderStatus;
   price: number;
+  payments?: Payment[];
 }
 
 const STORAGE_KEY = "tailor_orders_v1";
@@ -19,7 +30,9 @@ export function loadOrders(): Order[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Order[]) : [];
+    const list = raw ? (JSON.parse(raw) as Order[]) : [];
+    // Backward compatibility: ensure payments array exists
+    return list.map((o) => ({ ...o, payments: o.payments ?? [] }));
   } catch {
     return [];
   }
@@ -59,4 +72,33 @@ export function formatDateTime(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+export function paidAmount(order: Order): number {
+  return (order.payments ?? []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+}
+
+export function remainingAmount(order: Order): number {
+  return Math.max(0, (order.price || 0) - paidAmount(order));
+}
+
+export function paymentStatus(order: Order): PaymentStatus {
+  const paid = paidAmount(order);
+  if (paid <= 0) return "unpaid";
+  if (paid >= (order.price || 0)) return "paid";
+  return "partial";
+}
+
+export const paymentMethodLabels: Record<PaymentMethod, string> = {
+  cash: "Naqd",
+  click: "Click",
+  payme: "Payme",
+  uzcard: "Uzcard",
+  humo: "Humo",
+  transfer: "Bank o'tkazma",
+  other: "Boshqa",
+};
+
+export function formatSom(value: number): string {
+  return `${(value || 0).toLocaleString("uz-UZ")} so'm`;
 }

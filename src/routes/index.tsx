@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Order, loadOrders, saveOrders } from "@/lib/orders";
+import { Order, Payment, loadOrders, paidAmount, paymentStatus, remainingAmount, saveOrders, formatSom } from "@/lib/orders";
 import { OrderCard } from "@/components/OrderCard";
 import { NewOrderDialog } from "@/components/NewOrderDialog";
 import { Toaster } from "@/components/ui/sonner";
-import { Scissors, Package, Loader, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Scissors, Package, Loader, CheckCircle2, AlertTriangle, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
@@ -33,12 +33,17 @@ function Index() {
 
   const stats = useMemo(() => {
     const now = Date.now();
+    const totalRevenue = orders.reduce((sum, o) => sum + paidAmount(o), 0);
+    const totalOutstanding = orders.reduce((sum, o) => sum + remainingAmount(o), 0);
     return {
       total: orders.length,
       pending: orders.filter((o) => o.status === "pending").length,
       inProgress: orders.filter((o) => o.status === "in_progress").length,
       completed: orders.filter((o) => o.status === "completed").length,
       overdue: orders.filter((o) => o.status !== "completed" && new Date(o.dueDate).getTime() < now).length,
+      unpaid: orders.filter((o) => paymentStatus(o) !== "paid").length,
+      totalRevenue,
+      totalOutstanding,
     };
   }, [orders]);
 
@@ -79,6 +84,25 @@ function Index() {
     toast.success("Buyurtma o'chirildi");
   };
 
+  const addPayment = (orderId: string, payment: Payment) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? { ...o, payments: [...(o.payments ?? []), payment] } : o
+      )
+    );
+  };
+
+  const removePayment = (orderId: string, paymentId: string) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? { ...o, payments: (o.payments ?? []).filter((p) => p.id !== paymentId) }
+          : o
+      )
+    );
+    toast.success("To'lov o'chirildi");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Toaster position="top-center" richColors />
@@ -110,6 +134,22 @@ function Index() {
           </p>
         </section>
 
+        {/* Revenue summary */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+          <div className="rounded-2xl border bg-gradient-to-br from-success/15 to-success/5 p-5">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+              <Wallet className="h-4 w-4" /> Jami tushum
+            </div>
+            <div className="text-3xl font-bold text-success">{formatSom(stats.totalRevenue)}</div>
+          </div>
+          <div className="rounded-2xl border bg-gradient-to-br from-destructive/15 to-destructive/5 p-5">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+              <AlertTriangle className="h-4 w-4" /> Qarz / kutilayotgan
+            </div>
+            <div className="text-3xl font-bold text-destructive">{formatSom(stats.totalOutstanding)}</div>
+          </div>
+        </section>
+
         {/* Stats */}
         <section className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
           <StatCard icon={Package} label="Jami" value={stats.total} active={filter === "all"} onClick={() => setFilter("all")} />
@@ -133,7 +173,14 @@ function Index() {
         ) : (
           <section className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map((order) => (
-              <OrderCard key={order.id} order={order} onUpdateStatus={updateStatus} onDelete={deleteOrder} />
+              <OrderCard
+                key={order.id}
+                order={order}
+                onUpdateStatus={updateStatus}
+                onDelete={deleteOrder}
+                onAddPayment={addPayment}
+                onRemovePayment={removePayment}
+              />
             ))}
           </section>
         )}
