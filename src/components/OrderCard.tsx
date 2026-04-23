@@ -2,7 +2,8 @@ import { Order, formatDate, formatSom, paidAmount, paymentStatus, remainingAmoun
 import { CountdownBadge } from "./CountdownBadge";
 import { PaymentDialog } from "./PaymentDialog";
 import { Button } from "@/components/ui/button";
-import { Phone, Scissors, Calendar, Trash2, Play, Check, Wallet } from "lucide-react";
+import { Phone, Scissors, Calendar, Trash2, Play, Check, Wallet, BadgeCheck } from "lucide-react";
+import { toast } from "sonner";
 
 interface Props {
   order: Order;
@@ -136,6 +137,24 @@ export function OrderCard({ order, onUpdateStatus, onDelete, onAddPayment, onRem
           {order.status === "completed" && (
             <Button onClick={() => onUpdateStatus(order.id, "in_progress")} variant="outline" className="flex-1">
               Qayta ochish
+            </Button>
+          )}
+          {remaining > 0 && order.price > 0 && (
+            <Button
+              onClick={() => {
+                onAddPayment(order.id, {
+                  id: crypto.randomUUID(),
+                  amount: remaining,
+                  method: "cash",
+                  date: new Date().toISOString(),
+                  note: "To'liq to'landi",
+                });
+                toast.success("To'liq to'lov belgilandi 💰");
+              }}
+              variant="outline"
+              className="flex-1 border-success/40 text-success hover:bg-success/10 hover:text-success"
+            >
+              <BadgeCheck className="h-4 w-4 mr-1" /> To'landi
             </Button>
           )}
           <PaymentDialog order={order} onAddPayment={onAddPayment} onRemovePayment={onRemovePayment} />
