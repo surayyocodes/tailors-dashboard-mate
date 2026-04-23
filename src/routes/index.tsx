@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Order, loadOrders, saveOrders } from "@/lib/orders";
+import { Order, Payment, loadOrders, paidAmount, paymentStatus, remainingAmount, saveOrders, formatSom } from "@/lib/orders";
 import { OrderCard } from "@/components/OrderCard";
 import { NewOrderDialog } from "@/components/NewOrderDialog";
 import { Toaster } from "@/components/ui/sonner";
-import { Scissors, Package, Loader, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Scissors, Package, Loader, CheckCircle2, AlertTriangle, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
@@ -33,12 +33,17 @@ function Index() {
 
   const stats = useMemo(() => {
     const now = Date.now();
+    const totalRevenue = orders.reduce((sum, o) => sum + paidAmount(o), 0);
+    const totalOutstanding = orders.reduce((sum, o) => sum + remainingAmount(o), 0);
     return {
       total: orders.length,
       pending: orders.filter((o) => o.status === "pending").length,
       inProgress: orders.filter((o) => o.status === "in_progress").length,
       completed: orders.filter((o) => o.status === "completed").length,
       overdue: orders.filter((o) => o.status !== "completed" && new Date(o.dueDate).getTime() < now).length,
+      unpaid: orders.filter((o) => paymentStatus(o) !== "paid").length,
+      totalRevenue,
+      totalOutstanding,
     };
   }, [orders]);
 
@@ -77,6 +82,25 @@ function Index() {
   const deleteOrder = (id: string) => {
     setOrders((prev) => prev.filter((o) => o.id !== id));
     toast.success("Buyurtma o'chirildi");
+  };
+
+  const addPayment = (orderId: string, payment: Payment) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? { ...o, payments: [...(o.payments ?? []), payment] } : o
+      )
+    );
+  };
+
+  const removePayment = (orderId: string, paymentId: string) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? { ...o, payments: (o.payments ?? []).filter((p) => p.id !== paymentId) }
+          : o
+      )
+    );
+    toast.success("To'lov o'chirildi");
   };
 
   return (
